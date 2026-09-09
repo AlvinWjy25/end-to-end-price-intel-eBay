@@ -1,0 +1,6 @@
+FROM postgres:16
+
+# The official PostgreSQL entrypoint runs these files once on a new data volume.
+COPY src/deployment/create_main_table.sql /docker-entrypoint-initdb.d/01_create_main_table.sql
+COPY src/deployment/create_prediction_request.sql /docker-entrypoint-initdb.d/02_create_prediction_request.sql
+COPY src/deployment/create_prediction_results.sql /docker-entrypoint-initdb.d/03_create_prediction_results.sql
