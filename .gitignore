@@ -21,6 +21,8 @@ logs/dbt_logs
 logs/pipeline_run
 logs/mlruns
 logs/mlflow.db
+logs/deployment
+logs/mlflow.db
 
 #notebook
 notebook/temps
