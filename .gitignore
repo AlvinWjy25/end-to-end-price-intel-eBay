@@ -19,6 +19,7 @@ config/__pycache__
 #logs
 logs/dbt_logs
 logs/pipeline_run
+logs/training_pipeline
 logs/mlruns
 logs/deployment
 logs/mlflow.db
