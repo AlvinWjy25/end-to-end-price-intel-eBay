@@ -1,0 +1,41 @@
+services:
+  database:
+    build:
+      context: .
+      dockerfile: Dockerfile.database.setup
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-price_intelligence}
+      POSTGRES_USER: ${POSTGRES_USER:-test_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    env_file:
+      - config/.env
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-price_intelligence}
+      DB_USER: ${POSTGRES_USER:-test_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-test_password}
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "${API_HOST_PORT:-8000}:8000"
+
+volumes:
+  pgdata:
