@@ -34,6 +34,7 @@ price_intel_dbt/profiles.yml
 
 #src
 src/__pycache__
+src/artifacts/preprocessed
 
 #parent dir
 .user.yml
