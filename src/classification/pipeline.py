@@ -24,12 +24,18 @@ from config.config_script import (
     MODEL_CLASSIFICATION_PATH, CLASSIFICATION_TARGET
 )
 
-from preprocessor import preprocess_classification, TextVectorizer, save_sparse_matrix_as_parquet, set_seed
-from train import (RiskDataset, load_data, load_vectorizer, train_and_evaluate_model, 
-                    train_loop, evaluate_loop, save_model_artifact, model_setup,
-                    configure_mlflow, log_classification_artifacts)
-        
-from evaluate import Evaluate_MLP
+try:
+    from .preprocessor import preprocess_classification, TextVectorizer, save_sparse_matrix_as_parquet, set_seed
+    from .train import (RiskDataset, load_data, load_vectorizer, train_and_evaluate_model,
+                        train_loop, evaluate_loop, save_model_artifact, model_setup,
+                        configure_mlflow, log_classification_artifacts)
+    from .evaluate import Evaluate_MLP
+except ImportError:
+    from preprocessor import preprocess_classification, TextVectorizer, save_sparse_matrix_as_parquet, set_seed
+    from train import (RiskDataset, load_data, load_vectorizer, train_and_evaluate_model,
+                       train_loop, evaluate_loop, save_model_artifact, model_setup,
+                       configure_mlflow, log_classification_artifacts)
+    from evaluate import Evaluate_MLP
 
 if __name__ == "__main__":
     main_logger = setup_logger('classification', 'preprocessor_run')
