@@ -10,7 +10,7 @@ Light novel listings on eBay are notoriously inconsistent: sellers mix official 
 
 This project is built to classify if a light novel listing is an official light novel listing or not, and predict the price of an official light novel listing, given the region and condition of the item.
 
-**Why exclude unofficial listings?** This project trains only on plausibly-official light novel listings — bootleg/reprint listings are filtered out via a text-based risk score before training. This isn't just a data-quality decision: unofficial listings don't reflect genuine market value (no licensing costs), and including them would bias price predictions downward while indirectly normalizing counterfeit goods. Official second-hand circulation, by contrast, is a legal, transparent market this project aims to support — see Section Q.2 [6.1.2 About Project FAQ: eBay Light Novel Price Intelligence Documentation](https://app.notion.com/p/eBay-Light-Novel-Price-Intelligence-Documentation-2-0-3bf16382ebe58040abeaeed49986dd13?source=copy_link#3c516382ebe580c2a46ef9c4ffff7394) for the full ethical/legal reasoning.
+**Why exclude unofficial listings?** This project trains only on plausibly-official light novel listings — bootleg/reprint listings are filtered out via a text-based risk score before training. This isn't just a data-quality decision: unofficial listings don't reflect genuine market value (no licensing costs), and including them would bias price predictions downward while indirectly normalizing counterfeit goods. Official second-hand circulation, by contrast, is a legal, transparent market this project aims to support — see Section Q.2 [3.1.2 About Project FAQ: eBay Light Novel Price Intelligence Documentation](https://app.notion.com/p/eBay-Light-Novel-Price-Intelligence-Documentation-2-0-3bf16382ebe58040abeaeed49986dd13?source=copy_link#3c516382ebe580c2a46ef9c4ffff7394) for the full ethical/legal reasoning.
 
 ## Current status
 
@@ -18,12 +18,12 @@ This project is built to classify if a light novel listing is an official light 
 |---|---|
 | Ingestion (eBay Browse API → Postgres) | ✅ Done |
 | dbt transformation layer (staging → intermediate → marts) | ✅ Done |
-| Price regression model [LightGBM] | ✅ Finalized! — Fold metric: R² 0.700 ± 0.069, MAE $13.005, SMAPE: 26.234% |
+| Price regression model [LightGBM] | ✅ Finalized! — Multiple Random split metric: R² 0.677 ± 0.065, MAE $15.1457, SMAPE: 27.677% |
 | Confidence intervals (quantile regression) | 📋 Planned  |
 | Risk classification model (official vs. unofficial) [MLP] | ✅ Finalized! — Test metric: Accuracy: 98.9%, F1: 97.7%, Val -> Test F1 gap : -0.012, Val -> Test AUC gap: -0.011 |
-| API (FastAPI) | 📋 Planned |
-| Frontend | 📋 Planned |
-| Containerization (Docker/K8s) | 🚧 Docker in progress |
+| API (FastAPI) | ✅ Done |
+| Frontend | 📋 Postponed |
+| Containerization (Docker/K8s) | 📋 Functionally Done |
 
 ## Architecture
 
@@ -37,9 +37,9 @@ eBay Browse API → ingest.py → raw.ebay_listings (Postgres)
                     ┌────────────────┴────────────────┐
                     │                                 │
           Regression pipeline                Classification pipeline
-          (price estimation)                 (legitimacy risk — planned)
+          (price estimation)                 (legitimacy risk)
                     │
-              FastAPI (planned) → Frontend (planned)
+              FastAPI (Done) → Frontend (Postponed) → Docker (Functionally Done)
 ```
 
 ## Tech stack
@@ -67,7 +67,7 @@ eBay Browse API → ingest.py → raw.ebay_listings (Postgres)
    ```
 3. From the project root, run:
    ```
-   docker compose up
+   docker compose -p end-to-end_price-intel-ebay up -d
    ```
    This will: spin up Postgres → run the dbt pipeline (staging → intermediate → marts) → run `pipeline.py` (feature prep + inference) → launch the API → launch the frontend.
 4. Once containers are up, the app will be available at `http://localhost:<port>` (planned).
@@ -84,13 +84,15 @@ Full rationale for every decision above, plus EDA, failed hypotheses (e.g. why p
 
 ## Full documentation
 
-📄 **[Full documentation — Notion](https://app.notion.com/p/eBay-Light-Novel-Price-Intelligence-Documentation-2-0-3bf16382ebe58040abeaeed49986dd13?source=copy_link)** 
+📄 **[Problem Documentation — Notion](https://app.notion.com/p/eBay-Light-Novel-Price-Intelligence-Documentation-2-0-3bf16382ebe58040abeaeed49986dd13?source=copy_link)** 
 
-Covers: complete dbt lineage rationale, EDA notebooks, feature engineering tier-by-tier logic, model ablation studies, cross-validation diagnostics, and the classification model design (once built).
+Covers: Project overview, Problem Framing, and FAQ.
+
+Pipeline logic is located at `notebook/01_EDA_x.ipynb`, and `notebook/02_EDA.ipynb`
+Staging -> marts logic is located at `price_intel_dbt/models/../.yml`
 
 ## Known limitations
 
-- Training set is currently ~1,647 rows (54.88%) are qualified enough after filtering — small enough that hyperparameter tuning via 5-fold CV showed high variance across folds and was not adopted (default LightGBM params used instead; see full docs).
+- Training set for regression is currently ~1,647 rows (54.88%) are qualified enough after filtering — small enough that hyperparameter tuning via 5-fold CV showed high variance across folds and was not adopted (default LightGBM params used instead; see full docs).
 - Most of the data pulled from ebay listings are due to unofficial listings (automatically marked as high risk), inconsistent/incomplete metadata with title and description listings, or listings without condition information.
-- Price prediction is capped near the training set's max observed price (~$1,099.99) — the model does not extrapolate well to very rare, ultra-high-value listings.
 - `seller_location` is currently the dominant price signal (proxying for import/rarity/edition), but only 7 countries are represented and two (Germany, Canada) have fewer than 5 listings each — generalization to unseen seller countries is untested.
