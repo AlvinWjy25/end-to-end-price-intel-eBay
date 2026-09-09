@@ -30,7 +30,10 @@ from config.config_script import (
     DEVICE, BATCH_SIZE, CLASSIFICATION_TARGET
 )
 
-from preprocessor import TextVectorizer, set_seed
+try:
+    from .preprocessor import TextVectorizer, set_seed
+except ImportError:
+    from preprocessor import TextVectorizer, set_seed
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 class Evaluate_MLP(TextVectorizer):
@@ -191,11 +194,17 @@ class Evaluate_MLP(TextVectorizer):
         self.logger.info(f"Lowest val_loss at epoch {best_epoch}: {min(history['val_loss']):.4f}")
 
     def evaluate_test(self, history = None, model = None, test_loader = None, criterion = None, device = DEVICE):
-        from train import evaluate_loop
+        try:
+            from .train import evaluate_loop
+        except ImportError:
+            from train import evaluate_loop
 
         try:
             if model is None or history is None or criterion is None or test_loader is None:
-                from train import RiskDataset, model_setup
+                try:
+                    from .train import RiskDataset, model_setup
+                except ImportError:
+                    from train import RiskDataset, model_setup
 
                 title_test = pd.read_parquet(TITLE_TEST_PATH).to_numpy()
                 desc_test = pd.read_parquet(DESCRIPTION_TEST_PATH).to_numpy()
