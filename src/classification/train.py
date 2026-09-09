@@ -38,8 +38,12 @@ from config.config_script import (
     EVAL_HISTORY_CLASSIFICATION_PATH, EVAL_SUMMARY_CLASSIFICATION_PATH
 )
 
-from preprocessor import preprocess_classification, TextVectorizer, set_seed
-from evaluate import Evaluate_MLP
+try:
+    from .preprocessor import preprocess_classification, TextVectorizer, set_seed
+    from .evaluate import Evaluate_MLP
+except ImportError:
+    from preprocessor import preprocess_classification, TextVectorizer, set_seed
+    from evaluate import Evaluate_MLP
 
 import random
 import torch
