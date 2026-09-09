@@ -40,6 +40,14 @@ if __name__ == "__main__":
     pipeline_train = Pipeline_train()
     pipeline_train.fit_model_regression(verbose=0)
 
+    logger.info("[conformal_train.py]")
+    logger.info("=" * 100)
+
+    from conformal_train import Conformal_train
+
+    pipeline_train = Conformal_train()
+    pipeline_train.fit_conformal()
+
     file_to_delete_1 = Path(root_dir / 'src' / 'regression' / 'mlruns')
     file_to_delete_2 = Path(root_dir / 'src' / 'regression' / '__pycache__')
 
