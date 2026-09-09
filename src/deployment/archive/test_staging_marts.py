@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv(ROOT_DIR / "config" / ".env")
 
 import psycopg2
-from db import get_connection, store_and_engineer_features
+from src.pipeline.db import get_connection, store_and_engineer_features
 from archive.logging import setup_logger
 
 logger = setup_logger('test_staging_marts_run')
