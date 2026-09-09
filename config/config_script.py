@@ -13,7 +13,9 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from dotenv import load_dotenv
 
-load_dotenv('../../config/.env')
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+load_dotenv(ROOT_DIR / 'config' / '.env')
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = ROOT_DIR / "logs" / "pipeline_run" 
@@ -90,6 +92,7 @@ ARTIFACT_MODEL_PATH.mkdir(parents=True, exist_ok=True)
 
 MODEL_REGRESSION_PATH = Path(ARTIFACT_DIR / 'models' / 'final_regression.joblib')
 MODEL_CLASSIFICATION_PATH = Path(ARTIFACT_DIR / 'models' / 'final_classification.pth')
+CONFORMAL_ARTIFACT_PATH = Path(ARTIFACT_DIR / 'models' / 'conformal_quantile_90.joblib')
 
 MLFLOW_MLRUNS_PATH = Path(ROOT_DIR / "logs" / "mlruns")
 MLFLOW_MLRUNS_PATH.mkdir(parents=True, exist_ok=True)
@@ -179,6 +182,9 @@ target_col = 'price'
 
 class load_dataframe:
     def __init__(self):
+        ROOT_DIR = Path(__file__).resolve().parents[1]
+        load_dotenv(ROOT_DIR / 'config' / '.env')
+
         self.DB_USER = os.getenv("DB_USER")
         self.DB_PASSWORD = os.getenv("DB_PASSWORD")
         self.DB_HOST = os.getenv("DB_HOST")
