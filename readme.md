@@ -62,15 +62,29 @@ eBay Browse API → ingest.py → raw.ebay_listings (Postgres)
    DB_HOST=postgres
    DB_PORT=5432
    DB_NAME=price_intelligence
-   DB_USER=your_db_user
-   DB_PASSWORD=your_db_password
+   DB_USER=test_user
+   DB_PASSWORD=test_password
    ```
+   NOTE: to get your `EBAY_CLIENT_ID` and `EBAY_CLIENT_SECRET`, navigate to: [1.3.A. Setup your .env](https://app.notion.com/p/eBay-Light-Novel-Price-Intelligence-Documentation-2-0-3bf16382ebe58040abeaeed49986dd13?source=copy_link#3bf16382ebe580de87c3d2ea89397301)
 3. From the project root, run:
    ```
    docker compose -p end-to-end_price-intel-ebay up -d
    ```
    This will: spin up Postgres → run the dbt pipeline (staging → intermediate → marts) → run `pipeline.py` (feature prep + inference) → launch the API → launch the frontend.
-4. Once containers are up, the app will be available at `http://localhost:<port>` (planned).
+4. Once container(s) is up, the app will be available at `http://localhost:8000/docs` (planned).
+5. To predict your first listings: go to ebay, search for any light novels, copy it's link from the browser search bar.
+Warning: pasting manga or any other product than light novel may result with error.
+
+6. Navigate to `http://localhost:8000/docs#/default/predict_predict_post`, Click Try it out
+7. Paste your link to: ebay_url
+
+Example:
+```
+{
+  "ebay_url": "https://www.ebay.com/itm/358790904803?_skw=Love+unseen+beneath+the+clear+night+sky&itmmeta=01M22X4QQWM5ZR93MYR10A3X68&hash=item53899abbe3:g:WJkAAeSwxghqfx3L&itmprp=enc%3AAQALAAABAGfYFPkwiKCW4ZNSs2u11xAFElMJdkLVZv0dGNqpH8wDpKkSEuTWms4VQQogd6FZk8Xx6ww5EuIy%2FvWUrwbq04dpXfJQQAWKXBKGenHr53V08CFmr7ub7NA5i%2FkR7hSQtFdO6AGCr5B8iysZsK9OHTkLaG%2FQmtfD6fmnP0REdJO58zVf4zB3WM4VgR%2B--LY0k4SqQYFWRpzHmbQAFKc7e4Pm%2FOFQQtr4donXskOMa%2BtUvS098nAute21yjYh%2Fv12j0WtJCd8eQTTncSaQAVjnzTRi24--lJ7RMQbA5JtubesZf4mvokxwz0O%2FVSpgxOZse1Nsw5HnXCJB%2FYP5kBlbR4%3D%7Ctkp%3ABk9SR4j8kt2QaA",
+  "override_risk_gate": true
+}
+```
 
 ## Key design decisions (TL;DR)
 
