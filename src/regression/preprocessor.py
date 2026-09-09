@@ -29,15 +29,6 @@ class preprocess_regression(load_dataframe):
     def ordinal_encoder(self, df):
         self.logger.info("Executing ordinal encoding process...")
         # A.2.1 Volume Tier
-        def get_volume_tier(count):
-            if count == 1:
-                return 'single_volume'
-            elif 2 <= count <= 5:
-                return 'small_bundle'
-            elif 6 <= count <= 15:
-                return 'medium_set'
-            else:
-                return 'complete_large_set'
 
         def get_volume_tier_encoded(count):
             if count == 1:
@@ -64,7 +55,6 @@ class preprocess_regression(load_dataframe):
         df['condition_encoded'] = df['condition'].map(condition_map).fillna(3)
         
         # Encode Volume Tier
-        df['volume_tier'] = df['volume_count'].apply(get_volume_tier)
         df['volume_tier_encoded'] = df['volume_count'].apply(get_volume_tier_encoded)
 
         location_counts = df['seller_location'].value_counts()
