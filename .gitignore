@@ -20,7 +20,6 @@ config/__pycache__
 logs/dbt_logs
 logs/pipeline_run
 logs/mlruns
-logs/mlflow.db
 logs/deployment
 logs/mlflow.db
 
@@ -35,8 +34,6 @@ price_intel_dbt/profiles.yml
 
 #src
 src/__pycache__
-src/artifacts/models
-src/artifacts/preprocessed
 
 #parent dir
 .user.yml
