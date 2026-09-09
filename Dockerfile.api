@@ -1,0 +1,77 @@
+# Dockerfile.api
+#
+# Serves the FastAPI /predict endpoint. Deliberately SEPARATE from
+# the root `dockerfile` (batch pipeline: ingest + dbt run/test +
+# training) -- these are different container lifecycles:
+#
+#   - pipeline image: run manually / via CI / on a schedule, exits
+#     when done, produces model artifacts as its output
+#   - this image: long-running service, starts fast (model artifacts
+#     are baked in at build time, not trained at container startup),
+#     never trains anything
+#
+# Model artifacts (final_classification.pth, final_regression.joblib,
+# vectorizers, conformal_quantile_90.joblib) are bundled INTO this
+# image at build time (decided 2026-09, prioritizing portability --
+# `docker pull` + `docker run` should just work for anyone trying
+# this out, without needing separately-mounted volumes). This means
+# the image must be rebuilt whenever the model is retrained.
+
+FROM python:3.12.13-slim
+
+WORKDIR /app
+
+# --- Install dependencies first (separate layer, cached across
+# builds as long as requirements.api.txt doesn't change) ---
+COPY config/requirements.api.txt .
+
+# CPU-only torch: explicit index avoids pip resolving a CUDA wheel by
+# platform default. Installed in the same layer as the rest of
+# requirements.api.txt so torch's version pin there is honored.
+
+# If you want to take advantage of your CUDA NVIDIA GPU, you can change the link to something like:
+# https://download.pytorch.org/whl/cu130 (based on CUDA 13.0)
+# Check your nvidia compatible cu version via nvidia-smi on terminal.
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch \
+    && pip install --no-cache-dir -r requirements.api.txt
+
+# --- Copy only what the API path actually needs ---
+#
+# NOT copying: notebook/, price_intel_dbt/{seeds,snapshots,tests,analyses},
+# src/regression/{preprocessor,train,evaluate}.py's notebook-era
+# scratch files, src/ingestion/backups|debug/ -- none of these are
+# imported by src/deployment/ or src/pipeline/, and leaving them out
+# keeps the image smaller and avoids accidentally shipping local
+# backup JSON dumps (src/ingestion/backups/*.json) into a public image.
+#
+# staging_marts_sql.py reads the real dbt .sql files from disk at
+# import time (see that module's docstring), so price_intel_dbt/models/
+# MUST be present here even though this image never runs `dbt` itself.
+
+COPY config/ config/
+COPY price_intel_dbt/models/ price_intel_dbt/models/
+COPY src/deployment/ src/deployment/
+COPY src/pipeline/ src/pipeline/
+COPY src/classification/ src/classification/
+COPY src/ingestion/ingest.py src/ingestion/ingest.py
+COPY src/artifacts/models/ src/artifacts/models/
+COPY src/artifacts/vectorizer/ src/artifacts/vectorizer/
+
+# Needed for `from src.X import Y` / `from config.X import Y` style
+# imports to resolve as packages.
+RUN touch src/__init__.py \
+    && touch src/deployment/__init__.py \
+    && touch src/pipeline/__init__.py \
+    && touch src/classification/__init__.py \
+    && touch src/ingestion/__init__.py \
+    && touch config/__init__.py
+
+EXPOSE 8000
+
+# Sync (not async) FastAPI app, per project decision -- a single
+# uvicorn worker is sufficient at this traffic scale. Increase
+# --workers here (not inside main.py) if that ever changes; ModelRegistry
+# is loaded once per worker process, so more workers means more
+# memory for duplicated model copies -- weigh that against throughput
+# needs before increasing.
+CMD ["uvicorn", "src.deployment.main:app", "--host", "0.0.0.0", "--port", "8000"]
