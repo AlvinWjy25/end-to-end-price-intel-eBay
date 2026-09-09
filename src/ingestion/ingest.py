@@ -24,11 +24,13 @@ from dotenv import load_dotenv
 from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from pathlib import Path
+ROOT_DIR = Path(__file__).resolve().parents[2]
 
 # ---------------------------------------------------------
 # 1. Load credentials from .env
 # ---------------------------------------------------------
-load_dotenv()
+load_dotenv(ROOT_DIR / "config" / ".env")
 
 EBAY_CLIENT_ID = os.getenv("EBAY_CLIENT_ID")
 EBAY_CLIENT_SECRET = os.getenv("EBAY_CLIENT_SECRET")
@@ -81,7 +83,7 @@ def search_item_ids(session: requests.Session, access_token: str, keyword: str, 
     params = {"q": keyword, "limit": limit}
 
     try:
-        response = session.get(EBAY_SEARCH_URL, headers=headers, params=params, timeout=20)
+        response = session.get(EBAY_SEARCH_URL, headers=headers, params=params, timeout=(5, 10))
         response.raise_for_status()
         data = response.json()
         items = data.get("itemSummaries", [])
@@ -101,7 +103,7 @@ def get_item_detail(session: requests.Session, access_token: str, item_id: str) 
     url = f"{EBAY_ITEM_URL}/{item_id}"
 
     try:
-        response = session.get(url, headers=headers, timeout=20)
+        response = session.get(url, headers=headers, timeout=(5, 10))
 
         if response.status_code != 200:
             return None
@@ -127,11 +129,16 @@ def strip_html(raw_html: str | None) -> str | None:
 
 def create_retry_session() -> requests.Session:
     session = requests.Session()
-    retries = Retry( # Retry with exponential backoff
+    retries = Retry( # Retry with short exponential backoff
         total=3,                
-        backoff_factor=1,       
+        connect=3,
+        read=3,
+        status=3,
+        backoff_factor=0.2,
         status_forcelist=[429, 500, 502, 503, 504],
-        raise_on_status=False
+        allowed_methods=["GET"],
+        raise_on_status=False,
+        respect_retry_after_header=False,
     )
     adapter = HTTPAdapter(max_retries=retries)
     session.mount("https://", adapter)
