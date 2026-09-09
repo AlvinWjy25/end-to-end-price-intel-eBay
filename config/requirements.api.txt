@@ -1,0 +1,48 @@
+# requirements.api.txt -- FastAPI serving image only.
+#
+# Deliberately NOT a `pip freeze` dump: this lists only what
+# src/deployment/ and src/pipeline/ actually import (traced directly
+# from the code), so the Docker image stays lean and doesn't drag in
+# notebook/EDA-only packages (jupyter, matplotlib, mlflow server
+# tooling, etc.) that the serving path never touches.
+#
+# ALVIN: pin each version to match what's proven to work in your
+# `project1` conda env (e.g. `pip show <package>` or `conda list`).
+# Versions below are placeholders -- fill in the exact ones you've
+# tested against, especially for torch/lightgbm/scikit-learn where
+# minor version mismatches can silently change model behavior.
+
+fastapi==0.138.0
+uvicorn[standard]==0.52.4
+pydantic==2.13.4
+
+# Torch is installed manually on Dockerfile.api, if you want to make changes on torch, edit Dockerfile.api instead
+
+# ML / data
+scikit-learn==1.9.0
+lightgbm==4.7.0
+numpy==2.5.2
+pandas==2.3.3
+joblib==1.5.3
+scipy==1.18.0            # transitive dependency of lightgbm/scikit-learn; pin explicitly to avoid surprises
+tqdm==4.70.0
+matplotlib==3.11.0
+
+# eBay client (requests + retry, matching ingest.py)
+requests==2.34.2
+
+# Postgres
+psycopg2-binary==2.9.12   # -binary avoids needing libpq-dev / build toolchain in the image
+
+# Environment / config
+python-dotenv==1.2.2
+SQLAlchemy==2.0.51        # used by config_script.py's load_dataframe.create_connection()
+
+# HTML stripping (used by ingest.py's strip_html, reused via ingestion.ingest import)
+beautifulsoup4==4.15.0
+
+# Parquet & MLFLOW integration
+pyarrow==24.0.0
+fastparquet==2026.3.0
+mlflow==3.15.2
+urllib3==2.7.0
