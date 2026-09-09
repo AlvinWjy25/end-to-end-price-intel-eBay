@@ -182,7 +182,12 @@ volume_resolved as (
             when tier3_title_range_start is not null then 'medium'
             when tier3_title_volume is not null then 'medium'
             when tier3_title_hash_volume is not null then 'medium'
-            when title !~* '\d' and (tier4_desc_range_start is not null or tier4_desc_volume is not null) then 'medium'
+            -- when title !~* '\d' and (tier4_desc_range_start is not null or tier4_desc_volume is not null) then 'medium'
+            when title !~* '\d' and (tier4_desc_range_start is not null or tier4_desc_volume is not null) then
+                case
+                    when is_boxset is true and tier4_desc_range_start is null then 'low'
+                    else 'medium'
+                end
             else 'low'
         end as volume_confidence,
 
@@ -307,10 +312,10 @@ risk_scoring as (
 
 select
     *,
-    (text_risk_score + price_risk_score) as total_risk_score,
+    (text_risk_score_v2 + price_risk_score) as total_risk_score,
 
     case
-        when (text_risk_score + price_risk_score) >= 50
+        when (text_risk_score_v2 + price_risk_score) >= 50
             then 'High Risk'
         else 'Low Risk'
     end as risk_category,
