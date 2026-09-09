@@ -19,7 +19,7 @@ cleaned as (
 
         case
             when title ~* '(?:vol\.?|vols\.?|volume|volumes)\s*\d+\s*-\s*(?:vol\.?|vols\.?|volume|volumes)?\s*\d+' 
-            or title ~* '(complete set|full set)'
+            or title ~* '(complete set|full set|lot)'
             or title ~* '(?:vol\.?|vols\.?|volume|volumes)\s*\d+(?:\s*,\s*\d+)+'
             then true
             else false
