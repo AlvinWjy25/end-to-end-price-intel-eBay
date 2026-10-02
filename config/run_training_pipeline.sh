@@ -22,6 +22,14 @@ trap 'exit_code=$?; echo "Training pipeline finished with exit code $exit_code: 
 
 conda activate ebay_price_intel_env
 
+cd "$PROJECT_ROOT/price_intel_dbt"
+
+dbt run
+
+dbt test
+
+cd "$PROJECT_ROOT"
+
 # WARNING: This may consume your EBAY API Quota, SETUP YOUR EBAY API at https://developer.ebay.com/signin & Place as such:
 # DIR: (parent dir)/config/.env
 # NOTE: .env content:  #DO NOT FORGET TO PUT config/.env on .GITIGNORE!
