@@ -14,7 +14,7 @@ cleaned as (
         initcap(trim(condition)) as condition,
         upper(trim(seller_location)) as seller_location,
         trim(description) as description,
-        localized_aspects,
+        cast(localized_aspects as JSONB) as localized_aspects,
         cast(created_at as timestamptz) as fetched_at,
 
         case
