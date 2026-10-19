@@ -76,22 +76,58 @@ def get_access_token() -> str:
 # ---------------------------------------------------------
 # 3. Search listing by keyword -> return list item_id
 # ---------------------------------------------------------
-def search_item_ids(session: requests.Session, access_token: str, keyword: str, limit: int = 30) -> list[str]:
+def search_item_ids(
+    session: requests.Session,
+    access_token: str,
+    keyword: str,
+    limit: int = 200,
+) -> list[str]:
+    if not 1 <= limit <= 200:
+        raise ValueError("limit harus antara 1 dan 200")
+
     headers = {
         "Authorization": f"Bearer {access_token}",
         "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
     }
-    params = {"q": keyword, "limit": limit}
 
-    try:
-        response = session.get(EBAY_SEARCH_URL, headers=headers, params=params, timeout=(5, 10))
+    item_ids = []
+    offset = 0
+    max_offset = 400 #factor of 200 only
+
+    while offset < max_offset:
+        params = {
+            "q": keyword,
+            "limit": limit,
+            "offset": offset,
+        }
+
+        response = session.get(
+            EBAY_SEARCH_URL,
+            headers=headers,
+            params=params,
+            timeout=(5, 10),
+        )
         response.raise_for_status()
+
         data = response.json()
         items = data.get("itemSummaries", [])
-        return [item["itemId"] for item in items if "itemId" in item]
-    except requests.exceptions.RequestException as e:
-        print(f" Warning: Fail search keyword'{keyword}': {e}")
-        return []
+        item_ids.extend(
+            item["itemId"] for item in items if "itemId" in item
+        )
+
+        total = data.get("total", 0)
+        next_offset = offset + len(items)
+
+        if not items or next_offset >= total:
+            break
+
+        if next_offset <= offset or next_offset > max_offset:
+            print(f"Warning: hasil untuk '{keyword}' melebihi batas offset eBay.")
+            break
+
+        offset = next_offset
+
+    return item_ids
 
 # ---------------------------------------------------------
 # 4. Get item details
@@ -291,27 +327,7 @@ def load_backup_from_json(filename: Path) -> list[tuple]:
 # ---------------------------------------------------------
 # 6. Main
 # ---------------------------------------------------------
-def main(argv: list[str] | None = None):
-    parser = argparse.ArgumentParser(description="Ingest eBay listings into PostgreSQL.")
-    parser.add_argument(
-        "--from-json",
-        type=Path,
-        metavar="FILE",
-        help="insert listings from a previously saved JSON backup instead of calling eBay",
-    )
-    args = parser.parse_args(argv)
-
-    if args.from_json:
-        try:
-            rows = load_backup_from_json(args.from_json)
-        except (OSError, json.JSONDecodeError, ValueError) as e:
-            parser.error(f"cannot load backup {args.from_json}: {e}")
-
-        print(f"Loaded {len(rows)} listing rows from {args.from_json}.")
-        inserted = insert_listings(rows)
-        print(f"Finished. {inserted} row successfully inserted to raw.ebay_listings.")
-        return
-
+def main():
     keywords = [
         "re:zero light novel",
         "the angel next door light novel",
@@ -333,7 +349,7 @@ def main(argv: list[str] | None = None):
     ]
 
     SEARCH_LIMIT = 200  # Item/keyword search limitation
-    REQUEST_DELAY = 0.12  # preventing throttle and spam detection
+    REQUEST_DELAY = 0.05  # preventing throttle and spam detection
 
     print(f"[{datetime.now()}] Starting ingestion process...")
 
@@ -395,4 +411,23 @@ def main(argv: list[str] | None = None):
         print("No data to insert.")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Ingest eBay listings into PostgreSQL.")
+    parser.add_argument(
+        "--from-json",
+        type=Path,
+        metavar="FILE",
+        help="insert listings from a previously saved JSON backup instead of calling eBay",
+    )
+    
+    args, unknown = parser.parse_args()
+    
+    if args.from_json:
+        try:
+            rows = load_backup_from_json(args.from_json)
+        except (OSError, json.JSONDecodeError, ValueError) as e:
+            parser.error(f"cannot load backup {args.from_json}: {e}")
+    
+        print(f"Loaded {len(rows)} listing rows from {args.from_json}.")
+        inserted = insert_listings(rows)
+        print(f"Finished. {inserted} row successfully inserted to raw.ebay_listings.")
+        
