@@ -12,6 +12,7 @@ Process:
 5. Insert to tabel raw.ebay_listings
 """
 
+import argparse
 import os
 import json
 import time
@@ -175,10 +176,27 @@ def parse_item(item: dict) -> tuple:
 # 5. Insert batch to Postgres
 # ---------------------------------------------------------
 def insert_listings(rows: list[tuple]) -> int:
-    conn = psycopg2.connect(
-        host=DB_HOST, port=DB_PORT, dbname=DB_NAME, user=DB_USER, password=DB_PASSWORD
-    )
-    cur = conn.cursor()
+    if not rows:
+        return 0
+
+    initial_query = """
+    CREATE SCHEMA IF NOT EXISTS raw;
+
+    CREATE TABLE IF NOT EXISTS raw.ebay_listings (
+        item_id VARCHAR(255) PRIMARY KEY,
+        title TEXT,
+        price NUMERIC,
+        currency VARCHAR(10),
+        condition TEXT,
+        seller_location TEXT,
+        description TEXT,
+        localized_aspects JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    ALTER TABLE raw.ebay_listings
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+    """
 
     insert_query = """
         INSERT INTO raw.ebay_listings (item_id, title, price, currency, condition, seller_location, description, localized_aspects)
@@ -190,21 +208,29 @@ def insert_listings(rows: list[tuple]) -> int:
             condition = EXCLUDED.condition,
             seller_location = EXCLUDED.seller_location,
             description = EXCLUDED.description,
-            localized_aspects = EXCLUDED.localized_aspects;
+            localized_aspects = EXCLUDED.localized_aspects,
+            created_at = now();
     """
 
     try:
-        cur.executemany(insert_query, rows)
-        conn.commit()
-        inserted_count = cur.rowcount
+        # execute commit if success, rollback if fail
+        with psycopg2.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+        ) as conn:
+            with conn.cursor() as cur:
+                cur.execute(initial_query)
+                cur.executemany(insert_query, rows)
+
+        # returning length of row
+        return len(rows)
+
     except Exception as e:
-        conn.rollback()
         print(f"Error when inserting data: {e}")
-        inserted_count = 0
-    finally:
-        cur.close()
-        conn.close()
-    return inserted_count
+        return 0
 
 def save_backup_to_json(rows: list[tuple], filename: str):
     # Save result to JSON file before insert to database.
@@ -232,10 +258,59 @@ def save_backup_to_json(rows: list[tuple], filename: str):
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(backup_data, f, ensure_ascii=False, indent=4)
 
+
+def load_backup_from_json(filename: Path) -> list[tuple]:
+    with filename.open("r", encoding="utf-8") as f:
+        backup_data = json.load(f)
+
+    if not isinstance(backup_data, list):
+        raise ValueError("Backup JSON must contain a list of listing objects.")
+
+    rows = []
+    for index, item in enumerate(backup_data, start=1):
+        if not isinstance(item, dict):
+            raise ValueError(f"Backup row {index} must be a JSON object.")
+
+        item_id = item.get("item_id")
+        if not isinstance(item_id, str) or not item_id:
+            raise ValueError(f"Backup row {index} is missing a valid item_id.")
+
+        rows.append((
+            item_id,
+            item.get("title"),
+            item.get("price"),
+            item.get("currency"),
+            item.get("condition"),
+            item.get("seller_location"),
+            item.get("description"),
+            Json(item.get("localized_aspects", [])),
+        ))
+
+    return rows
+
 # ---------------------------------------------------------
 # 6. Main
 # ---------------------------------------------------------
-def main():
+def main(argv: list[str] | None = None):
+    parser = argparse.ArgumentParser(description="Ingest eBay listings into PostgreSQL.")
+    parser.add_argument(
+        "--from-json",
+        type=Path,
+        metavar="FILE",
+        help="insert listings from a previously saved JSON backup instead of calling eBay",
+    )
+    args = parser.parse_args(argv)
+
+    if args.from_json:
+        try:
+            rows = load_backup_from_json(args.from_json)
+        except (OSError, json.JSONDecodeError, ValueError) as e:
+            parser.error(f"cannot load backup {args.from_json}: {e}")
+
+        print(f"Loaded {len(rows)} listing rows from {args.from_json}.")
+        inserted = insert_listings(rows)
+        print(f"Finished. {inserted} row successfully inserted to raw.ebay_listings.")
+        return
 
     keywords = [
         "re:zero light novel",
